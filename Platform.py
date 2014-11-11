@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import RPi.GPIO as GPIO
 import time
 
@@ -5,7 +6,6 @@ import time
 class Platform(object):
 	"""
 	Handles the PWM output for a HBridge and offers movement methods for the platform
-  
 	TODO:Implement a model of a 'radial' and angular velocity (super position :P)
 	"""
 
@@ -20,7 +20,7 @@ class Platform(object):
 	__LEFT     = 3
 	__RIGHT    = 4
 	
-	def __init__(self, PIN_MOTOR1=24, PIN_DIRF1=23, PIN_DIRB1=25, PIN_MOTOR2=27, PIN_DIRF2=4, PIN_DIRB2=22, lowSpeed=0, highSpeed=100):
+	def __init__(self, PIN_MOTOR1=27, PIN_DIRF1=4, PIN_DIRB1=22, PIN_MOTOR2=24, PIN_DIRF2=23, PIN_DIRB2=25, lowSpeed=0, highSpeed=100):
 		"""
 		  MOTOR 1 -> LEFT
 		  MOTOR 2 -> RIGHT
@@ -37,6 +37,7 @@ class Platform(object):
 		GPIO.setup(PIN_DIRF2, GPIO.OUT)
 		GPIO.setup(PIN_DIRB2, GPIO.OUT)
 		
+		# Set PWM
 		self.velocity = 0
 		GPIO.setup(PIN_MOTOR1, GPIO.OUT)
 		self.pwm1 = GPIO.PWM(PIN_MOTOR1, Platform.__F)
@@ -45,16 +46,23 @@ class Platform(object):
 		GPIO.setup(PIN_MOTOR2, GPIO.OUT)
 		self.pwm2 = GPIO.PWM(PIN_MOTOR2, Platform.__F)
 		self.pwm2.start(self.velocity)
-		
+
+		# State vector {state, time}
+		self.stateVector = [{0,0},{0,0},{0,0},{0,0},{0,0}]
+		self.lastTime = 0
+
+		# Init state
 		self.state(Platform.__STOP)
 	
 	def __del__(self):
 		self.pwm1.stop()
 		self.pwm2.stop()
-		
+
+		# Ojo con esto ! Ojo con el scope, no se vaya a destruir el objeto cuando aun vivan otros que usen GPIO !
 		GPIO.cleanup()
 	
-	
+	# --- PARTE ESCENCIAL ---
+
 	def setVelocity(self, vel):
 		"""
 	  	Change duty cycle an velocity of the Platform
@@ -70,7 +78,6 @@ class Platform(object):
 		  TODO: relegate this to a HBridge class
 		"""
 		if(newState == Platform.__STOP):
-			#is this necesarry?
 			self.setVelocity(0)
 			#set direction outputs to ((0,0),(0,0))
 			GPIO.output(self.pin_dir1f, 0)
@@ -91,18 +98,126 @@ class Platform(object):
 			GPIO.output(self.pin_dir2b, 1)
 		elif(newState == Platform.__LEFT):
 			#set direction outputs to ((1,0),(0,1))
-			GPIO.output(self.pin_dir1f, 1)
-			GPIO.output(self.pin_dir1b, 0)
-			GPIO.output(self.pin_dir2f, 0)
-			GPIO.output(self.pin_dir2b, 1)
-		elif(newState == Platform.__RIGHT):
-			#set direction outputs to ((0,1),(1,0))
 			GPIO.output(self.pin_dir1f, 0)
 			GPIO.output(self.pin_dir1b, 1)
 			GPIO.output(self.pin_dir2f, 1)
 			GPIO.output(self.pin_dir2b, 0)
+		elif(newState == Platform.__RIGHT):
+			#set direction outputs to ((0,1),(1,0))
+			GPIO.output(self.pin_dir1f, 1)
+			GPIO.output(self.pin_dir1b, 0)
+			GPIO.output(self.pin_dir2f, 0)
+			GPIO.output(self.pin_dir2b, 1)
 		else:
 			self.state(Platform.__STOP)
+
+	# --- FIN PARTE ESCENCIAL ---
+
+	# FUNCIONES A PARTIR DE LAS DE LAS ESCENCIALES
+	# funciones especificas para LARC 2014/2015
+
+	def stop(self):
+		self.state(0)
+		time.sleep(0.1)
+
+	def girarT(self, sentido, t=0.01):
+		if(sentido == 0):
+			return False;
+		elif(sentido > 0):
+			self.state(Platform.__RIGHT)
+		elif(sentido < 0):
+			self.state(Platform.__LEFT)
+
+		self.setVelocity(70);	#TODO: elegir velocidad adecuada
+		time.sleep(t);
+		self.stop();
+
+		return True;
+
+	def girar180(self):
+		#TODO: set time
+		return self.girarT(1, 2);
+
+	def mover(self, sentido, velocidad, tiempo):
+		if sentido>0:
+			self.state(1)
+			self.setVelocity(velocidad)
+			time.sleep(float(tiempo))
+		else:
+			self.state(2)
+			self.setVelocity(velocidad)
+			time.sleep(float(tiempo))
+
+		self.stop()
+		time.sleep(0.1)
+
+	def avanzarLento(self):
+		#TODO: setear velocidad correcta
+		self.state(1);
+		self.setVelocity(40);
+
+	def avanzarRapido(self):
+		#TODO: setear velocidad correcta
+		self.state(1);
+		self.setVelocity(75);
+
+	def avanzarMuyRapido(self):
+		#TODO: setear velocidad correcta
+		self.state(1);
+		self.setVelocity(100);
+
+	def avanzarMuyPoco(self):
+		#TODO: setear tiempo
+		self.avanzarLento();
+		time.sleep(0.3);
+		self.state(0);
+		time.sleep(0.1);
+
+	def avanzarPoco(self):
+		#TODO: setear tiempo
+		self.avanzarLento();
+		time.sleep(0.95);
+		self.state(0);
+		time.sleep(0.1);
+
+	def avanzarHarto(self):
+		#TODO: setear tiempo
+		time.sleep(5);
+		self.avanzarMuyRapido();
+		time.sleep(3);
+		self.state(0);
+		time.sleep(0.1);
+
+	def retrocederLento(self):
+		#TODO: setear velocidad correcta
+		self.state(2);
+		self.setVelocity(40);
+
+	def retrocederRapido(self):
+		#TODO: setear velocidad correcta
+		self.state(2);
+		self.setVelocity(75);
+
+	def retrocederPoco(self):
+		#TODO: setear tiempo
+		self.retrocederLento();
+		time.sleep(0.9);
+		self.state(0);
+		time.sleep(0.1);
+
+	def retrocederMuyPoco(self):
+		#TODO: setear tiempo
+		self.retrocederLento();
+		time.sleep(0.5);
+		self.state(0);
+		time.sleep(0.1);
+
+	def retrocederHarto(self):
+		#TODO: setear tiempo
+		self.retrocederMuyRapido();
+		time.sleep(25);
+		self.state(0);
+		time.sleep(0.1);
 	
 if __name__=="__main__":
 	GPIO.setwarnings(False)

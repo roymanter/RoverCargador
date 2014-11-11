@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import RPi.GPIO as GPIO
 import time 
 
@@ -11,11 +12,11 @@ class Claw(object):
 	
 	__F = 42		# 42
 	
-	__forceps_max = 9.2	# 9.2
+	__forceps_max = 9.4	# 9.4
 	__forceps_min = 4.0	# 4.0
 	
-	__lifter_max = 9.5	# 9.5
-	__lifter_min = 4.5	# 8.0
+	__lifter_max = 10.0	# 10.0
+	__lifter_min = 4.5	# 4.5
 	
 	__smooth_factor = 5
 	
@@ -41,6 +42,8 @@ class Claw(object):
 		#TODO: pwm.start() here or in __init__()???
 		pass
 	
+	# --- PARTE ESCENCIAL ---
+
 	### lifter methods
 	def up(self):
 		self.lifter_pwm.ChangeDutyCycle(self.__lifter_min)
@@ -74,7 +77,24 @@ class Claw(object):
 		for dc in range(self.__forceps_min*self.__smooth_factor, self.__forceps_max*self.__smooth_factor-0.1, -(self.__forceps_max-self.__forceps_min)/self.__smooth_factor):
 			self.forceps_pwm.ChangeDutyCycle(dc)
 			time.sleep(0.1)
-	
+
+	#  --- FIN PARTE ESCENCIAL --
+
+	def agarrar(self):
+		self.open()
+		time.sleep(0.5)
+		self.close()
+		time.sleep(1)
+		self.up()
+		time.sleep(1)
+
+	def dejar(self):
+		self.open()
+		time.sleep(1)
+		self.up()
+		time.sleep(1.5)
+		self.close()
+		time.sleep(0.5)
 
 if __name__=="__main__":
 	garra = Claw()
